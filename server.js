@@ -143,6 +143,14 @@ class Server {
                 this.dataObject.updatePending = this.updatePending;
             }
 
+            // Log GET access and a brief summary of current data
+            try {
+                const keys = this.dataObject ? Object.keys(this.dataObject) : [];
+                this.outputMessage(chalk.cyan(`[api/data] GET -> keys: ${keys.join(', ')}`));
+            } catch (e) {
+                // ignore logging errors
+            }
+
             response.json(this.dataObject);
         });
 
@@ -155,6 +163,30 @@ class Server {
 
             // Merge new data with existing
             this.dataObject = { ...this.dataObject, ...newData };
+
+            // Log POSTed data keys and a short inventory preview if present
+            try {
+                const keys = newData ? Object.keys(newData) : [];
+                this.outputMessage(chalk.green(`[api/data] POST <- keys: ${keys.join(', ')}`));
+
+                if (newData && newData.inventory) {
+                    // inventory may be array or object; create a small preview
+                    let inv = newData.inventory;
+                    let count = Array.isArray(inv) ? inv.length : (inv && typeof inv === 'object' ? Object.keys(inv).length : 0);
+                    let preview = null;
+                    try {
+                        if (Array.isArray(inv)) preview = JSON.stringify(inv.slice(0, 8));
+                        else if (inv && typeof inv === 'object') preview = JSON.stringify(Object.entries(inv).slice(0, 8));
+                        else preview = JSON.stringify(inv);
+                    } catch (e) {
+                        preview = '<unserializable>';
+                    }
+
+                    this.outputMessage(chalk.green(`[api/data] inventory count=${count} preview=${preview}`));
+                }
+            } catch (e) {
+                // swallow logging errors
+            }
 
             if (!isPackaged) {
                 try {
