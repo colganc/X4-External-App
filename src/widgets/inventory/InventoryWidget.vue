@@ -10,12 +10,6 @@
       <div v-if="!gameData" class="text-muted small">No inventory data received yet.</div>
 
       <div v-else>
-        <div class="small text-muted mb-2">
-          <div v-if="meta.playerName">Player: {{ meta.playerName }}</div>
-          <div v-if="meta.playerFaction">Faction: {{ meta.playerFaction }}</div>
-          <div v-if="meta.shipName">Ship: {{ meta.shipName }} ({{ meta.shipId }})</div>
-        </div>
-
         <div v-if="items && items.length">
           <div class="d-flex mb-2 gap-2 align-items-center">
             <input v-model="filters.q" class="form-control form-control-sm" placeholder="Filter item id..." />
@@ -33,8 +27,8 @@
             :key="it.id || it.name"
             class="list-group-item d-flex justify-content-between align-items-start"
           >
-            <div class="me-auto small">{{ it.id }}</div>
-            <div class="badge bg-secondary rounded-pill small">{{ it.count }}</div>
+            <div class="me-auto small">{{ it.name || it.id }}</div>
+            <div class="badge bg-secondary rounded-pill small">{{ displayCount(it) }}</div>
           </div>
           </div>
         </div>
@@ -74,6 +68,11 @@ export default {
     toggleSortDir() {
       this.sort.dir = this.sort.dir === 'asc' ? 'desc' : 'asc';
     }
+    ,
+    displayCount(it) {
+      const n = Number(it.count) || 0;
+      return n + 1;
+    }
   },
   computed: {
     formatted() {
@@ -88,14 +87,6 @@ export default {
     meta() {
       if (!this.gameData) return {};
       // If the widget receives a wrapper object (like { playerId, shipId, inventory })
-      if (typeof this.gameData === 'object' && !Array.isArray(this.gameData)) {
-        return {
-          playerName: this.gameData.playerName || this.gameData.player || null,
-          playerFaction: this.gameData.playerFaction || null,
-          shipName: this.gameData.shipName || null,
-          shipId: this.gameData.shipId || null,
-        };
-      }
       return {};
     },
     items() {
@@ -119,13 +110,13 @@ export default {
       // Filter by search text
       const q = (this.filters.q || '').toString().toLowerCase().trim();
       if (q) {
-        list = list.filter((it) => (it.id || '').toString().toLowerCase().indexOf(q) !== -1);
+        list = list.filter((it) => ((it.name || it.id) || '').toString().toLowerCase().indexOf(q) !== -1);
       }
 
-      // Filter by min count
+      // Filter by min count (compare using displayed count semantics)
       const min = Number(this.filters.minCount) || 0;
       if (min > 0) {
-        list = list.filter((it) => Number(it.count) >= min);
+        list = list.filter((it) => (Number(it.count) || 0) + 1 >= min);
       }
 
       // Sorting
@@ -134,13 +125,13 @@ export default {
 
       list.sort((a, b) => {
         if (by === 'count') {
-          const na = Number(a.count) || 0;
-          const nb = Number(b.count) || 0;
+          const na = (Number(a.count) || 0) + 1;
+          const nb = (Number(b.count) || 0) + 1;
           return (na - nb) * dir;
         }
-        // default: sort by id (string)
-        const sa = (a.id || '').toString().toLowerCase();
-        const sb = (b.id || '').toString().toLowerCase();
+        // default: sort by name (fall back to id)
+        const sa = ((a.name || a.id) || '').toString().toLowerCase();
+        const sb = ((b.name || b.id) || '').toString().toLowerCase();
         if (sa < sb) return -1 * dir;
         if (sa > sb) return 1 * dir;
         return 0;

@@ -23,7 +23,7 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 class Server {
-    dataObject = null;
+    dataObject = {};
     updatePending = false;
     lastOutputMessage = null;
 
@@ -158,42 +158,42 @@ class Server {
          * Handle incoming data from X4
          */
         this.app.post('/api/data', (request, response) => {
+            // If payload is an array of pairs like [[key, value], ...], convert to object first
+            let payload = request.body;
+            try {
+                if (Array.isArray(payload)) {
+                    const isPairs = payload.every((el) => Array.isArray(el) && typeof el[0] === 'string');
+                    if (isPairs) {
+                        const mapped = {};
+                        payload.forEach((pair) => { mapped[pair[0]] = pair[1]; });
+                        payload = mapped;
+                        this.outputMessage(chalk.yellow('[api/data] Converted array-of-pairs payload to object'));
+                    }
+                }
+            } catch (e) {
+                // ignore conversion errors and fall back to original payload
+            }
+
             // Normalize output (handle line breaks, color codes, etc.)
-            const newData = normalizeObjectRecursively(request.body);
+            const newData = normalizeObjectRecursively(payload);
 
             // Merge new data with existing
             this.dataObject = { ...this.dataObject, ...newData };
 
-            // Log POSTed data keys and a short inventory preview if present
+            // Log POSTed data keys
             try {
                 const keys = newData ? Object.keys(newData) : [];
                 this.outputMessage(chalk.green(`[api/data] POST <- keys: ${keys.join(', ')}`));
-
-                if (newData && newData.inventory) {
-                    // inventory may be array or object; create a small preview
-                    let inv = newData.inventory;
-                    let count = Array.isArray(inv) ? inv.length : (inv && typeof inv === 'object' ? Object.keys(inv).length : 0);
-                    let preview = null;
-                    try {
-                        if (Array.isArray(inv)) preview = JSON.stringify(inv.slice(0, 8));
-                        else if (inv && typeof inv === 'object') preview = JSON.stringify(Object.entries(inv).slice(0, 8));
-                        else preview = JSON.stringify(inv);
-                    } catch (e) {
-                        preview = '<unserializable>';
-                    }
-
-                    this.outputMessage(chalk.green(`[api/data] inventory count=${count} preview=${preview}`));
-                }
             } catch (e) {
                 // swallow logging errors
             }
 
             if (!isPackaged) {
                 try {
-                    if (!fs.existsSync(devFilePath) && this.dataObject != null) {
-                        // In local env: create dev-data.json
+                    if (this.dataObject != null) {
+                        // In local env: persist dev-data.json so GET can pick up changes
                         fs.writeFileSync(devFilePath, JSON.stringify(this.dataObject, null, 2));
-                        this.outputMessage(chalk.green(`Development data file created at ${devFilePath}`));
+                        this.outputMessage(chalk.green(`Development data file updated at ${devFilePath}`));
                     }
                 } catch (e) {
                     console.error(chalk.red(`Failed to write ${devFilePath}:`), e);
