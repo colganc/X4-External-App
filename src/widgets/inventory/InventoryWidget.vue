@@ -2,41 +2,39 @@
   <widget>
     <template #header>
       <div class="d-flex justify-content-between">
-        <h4 class="card-title pb-0 mb-0">Inventory (Raw)</h4>
+        <h4 class="card-title pb-0 mb-0">{{ $t('app.widgets.inventory.title') }}</h4>
       </div>
     </template>
 
     <div class="p-2">
-      <div v-if="!gameData" class="text-muted small">No inventory data received yet.</div>
+      <div v-if="!gameData" class="text-muted small">{{ $t('app.widgets.inventory.no_data') }}</div>
 
       <div v-else>
-        <div class="small text-muted mb-2">
-          <div v-if="meta.playerName">Player: {{ meta.playerName }}</div>
-          <div v-if="meta.playerFaction">Faction: {{ meta.playerFaction }}</div>
-          <div v-if="meta.shipName">Ship: {{ meta.shipName }} ({{ meta.shipId }})</div>
-        </div>
-
         <div v-if="items && items.length">
           <div class="d-flex mb-2 gap-2 align-items-center">
-            <input v-model="filters.q" class="form-control form-control-sm" placeholder="Filter item id..." />
-            <input v-model.number="filters.minCount" type="number" class="form-control form-control-sm" style="width:90px" placeholder="Min" />
+            <input v-model="filters.q" class="form-control form-control-sm" :placeholder="$t('app.widgets.inventory.filter_placeholder')" />
             <select v-model="sort.by" class="form-select form-select-sm" style="width:120px">
-              <option value="id">Sort: id</option>
-              <option value="count">Sort: count</option>
+              <option value="name">{{ $t('app.widgets.inventory.sort_name') }}</option>
+              <option value="amount">{{ $t('app.widgets.inventory.sort_amount') }}</option>
             </select>
             <button class="btn btn-sm btn-outline-secondary" @click="toggleSortDir()">{{ sort.dir === 'asc' ? '↑' : '↓' }}</button>
           </div>
 
-          <div class="list-group list-group-flush">
-          <div
-            v-for="it in displayedItems"
-            :key="it.id || it.name"
-            class="list-group-item d-flex justify-content-between align-items-start"
-          >
-            <div class="me-auto small">{{ it.id }}</div>
-            <div class="badge bg-secondary rounded-pill small">{{ it.count }}</div>
-          </div>
-          </div>
+          <perfect-scrollbar :class="'resizable-element'" data-min-resizable-height="90">
+            <div class="list-group list-group-flush">
+              <div
+                v-for="it in displayedItems"
+                :key="it.name"
+                class="list-group-item d-flex justify-content-between align-items-start"
+              >
+                <div class="me-auto small">
+                  <div>{{ it.name || $t('app.widgets.inventory.unknown') }}</div>
+                  <div v-if="it.price !== undefined && it.price !== null" class="text-muted small">{{ $t('app.widgets.inventory.price_label') }} {{ it.price }}</div>
+                </div>
+                <div class="badge bg-secondary rounded-pill small">{{ displayAmount(it) }}</div>
+              </div>
+            </div>
+          </perfect-scrollbar>
         </div>
 
         <pre v-else class="small mt-2" style="white-space: pre-wrap; word-break: break-word;">{{ formatted }}</pre>
@@ -58,14 +56,13 @@ export default {
       default: 40,
     },
   },
-  data() {
+    data() {
     return {
       filters: {
         q: '',
-        minCount: 0,
       },
       sort: {
-        by: 'id',
+          by: 'name',
         dir: 'asc',
       },
     };
@@ -73,6 +70,11 @@ export default {
   methods: {
     toggleSortDir() {
       this.sort.dir = this.sort.dir === 'asc' ? 'desc' : 'asc';
+    }
+    ,
+    displayAmount(it) {
+      const n = Number(it.amount) || 0;
+      return n;
     }
   },
   computed: {
@@ -83,64 +85,67 @@ export default {
       } catch (e) {
         return String(this.gameData);
       }
-    }
-    ,
-    meta() {
-      if (!this.gameData) return {};
-      // If the widget receives a wrapper object (like { playerId, shipId, inventory })
-      if (typeof this.gameData === 'object' && !Array.isArray(this.gameData)) {
-        return {
-          playerName: this.gameData.playerName || this.gameData.player || null,
-          playerFaction: this.gameData.playerFaction || null,
-          shipName: this.gameData.shipName || null,
-          shipId: this.gameData.shipId || null,
-        };
-      }
-      return {};
     },
     items() {
       if (!this.gameData) return [];
 
       // If gameData is an object that contains `.inventory` (our normalized format)
       if (typeof this.gameData === 'object' && !Array.isArray(this.gameData) && this.gameData.inventory) {
-        if (Array.isArray(this.gameData.inventory)) return this.gameData.inventory;
-        if (typeof this.gameData.inventory === 'object') return Object.entries(this.gameData.inventory).map(([k, v]) => ({ id: k, count: v }));
+        const inv = this.gameData.inventory;
+        if (Array.isArray(inv)) {
+          return inv.map((it) => ({
+            amount: Number(it.amount ?? it.quantity) || 0,
+            name: it.name || null,
+            price: it.price ?? null,
+          }));
+        }
+        if (typeof inv === 'object') {
+          return Object.entries(inv).map(([k, v]) => {
+            if (v && typeof v === 'object') {
+              return {
+                amount: Number(v.amount ?? v.quantity) || 0,
+                name: v.name || null,
+                price: v.price ?? null,
+              };
+            }
+            return { amount: Number(v) || 0, name: null, price: null };
+          });
+        }
       }
 
       // If gameData itself is an array of items
-      if (Array.isArray(this.gameData)) return this.gameData;
+      if (Array.isArray(this.gameData)) {
+        return this.gameData.map((it) => ({
+          amount: Number(it.amount ?? it.quantity) || 0,
+          name: it.name || null,
+          price: it.price ?? null,
+        }));
+      }
 
       return [];
-    }
-    ,
+    },
     displayedItems() {
       let list = (this.items || []).slice();
 
       // Filter by search text
       const q = (this.filters.q || '').toString().toLowerCase().trim();
       if (q) {
-        list = list.filter((it) => (it.id || '').toString().toLowerCase().indexOf(q) !== -1);
-      }
-
-      // Filter by min count
-      const min = Number(this.filters.minCount) || 0;
-      if (min > 0) {
-        list = list.filter((it) => Number(it.count) >= min);
+        list = list.filter((it) => ((it.name) || '').toString().toLowerCase().indexOf(q) !== -1);
       }
 
       // Sorting
-      const by = this.sort.by || 'id';
+      const by = this.sort.by || 'name';
       const dir = this.sort.dir === 'desc' ? -1 : 1;
 
       list.sort((a, b) => {
-        if (by === 'count') {
-          const na = Number(a.count) || 0;
-          const nb = Number(b.count) || 0;
+        if (by === 'amount') {
+          const na = Number(a.amount || 0);
+          const nb = Number(b.amount || 0);
           return (na - nb) * dir;
         }
-        // default: sort by id (string)
-        const sa = (a.id || '').toString().toLowerCase();
-        const sb = (b.id || '').toString().toLowerCase();
+        // default: sort by name
+        const sa = ((a.name) || '').toString().toLowerCase();
+        const sb = ((b.name) || '').toString().toLowerCase();
         if (sa < sb) return -1 * dir;
         if (sa > sb) return 1 * dir;
         return 0;

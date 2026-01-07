@@ -8,6 +8,4 @@ dist-ssr
 .env
 .vscode
 dev-data.json
-design.md
 dev-dist/
-reference/
