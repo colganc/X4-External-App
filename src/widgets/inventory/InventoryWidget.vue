@@ -20,19 +20,21 @@
             <button class="btn btn-sm btn-outline-secondary" @click="toggleSortDir()">{{ sort.dir === 'asc' ? '↑' : '↓' }}</button>
           </div>
 
-          <div class="list-group list-group-flush">
-          <div
-            v-for="it in displayedItems"
-            :key="it.id || it.name"
-            class="list-group-item d-flex justify-content-between align-items-start"
-          >
-            <div class="me-auto small">
-              <div>{{ it.name || 'Unknown' }}</div>
-              <div v-if="it.price !== undefined && it.price !== null" class="text-muted small">Price: {{ it.price }}</div>
+          <perfect-scrollbar :class="'resizable-element'" data-min-resizable-height="90">
+            <div class="list-group list-group-flush">
+              <div
+                v-for="it in displayedItems"
+                :key="it.id || it.name"
+                class="list-group-item d-flex justify-content-between align-items-start"
+              >
+                <div class="me-auto small">
+                  <div>{{ it.name || 'Unknown' }}</div>
+                  <div v-if="it.price !== undefined && it.price !== null" class="text-muted small">Price: {{ it.price }}</div>
+                </div>
+                <div class="badge bg-secondary rounded-pill small">{{ displayAmount(it) }}</div>
+              </div>
             </div>
-            <div class="badge bg-secondary rounded-pill small">{{ displayAmount(it) }}</div>
-          </div>
-          </div>
+          </perfect-scrollbar>
         </div>
 
         <pre v-else class="small mt-2" style="white-space: pre-wrap; word-break: break-word;">{{ formatted }}</pre>
@@ -71,7 +73,7 @@ export default {
     }
     ,
     displayAmount(it) {
-      const n = Number(it.amount ?? it.count) || 0;
+      const n = Number(it.amount) || 0;
       return n;
     }
   },
@@ -83,12 +85,6 @@ export default {
       } catch (e) {
         return String(this.gameData);
       }
-    }
-    ,
-    meta() {
-      if (!this.gameData) return {};
-      // If the widget receives a wrapper object (like { playerId, shipId, inventory })
-      return {};
     },
     items() {
       if (!this.gameData) return [];
@@ -99,7 +95,7 @@ export default {
         if (Array.isArray(inv)) {
           return inv.map((it) => ({
             id: it.id || it.ware || null,
-            amount: Number(it.amount ?? it.count ?? it.quantity) || 0,
+            amount: Number(it.amount ?? it.quantity) || 0,
             name: it.name || null,
             price: it.price ?? null,
           }));
@@ -109,7 +105,7 @@ export default {
             if (v && typeof v === 'object') {
               return {
                 id: k,
-                amount: Number(v.amount ?? v.count ?? v.amount) || 0,
+                amount: Number(v.amount ?? v.quantity) || 0,
                 name: v.name || null,
                 price: v.price ?? null,
               };
@@ -123,15 +119,14 @@ export default {
       if (Array.isArray(this.gameData)) {
         return this.gameData.map((it) => ({
           id: it.id || it.ware || null,
-          amount: Number(it.amount ?? it.count ?? it.quantity) || 0,
+          amount: Number(it.amount ?? it.quantity) || 0,
           name: it.name || null,
           price: it.price ?? null,
         }));
       }
 
       return [];
-    }
-    ,
+    },
     displayedItems() {
       let list = (this.items || []).slice();
 
@@ -139,9 +134,7 @@ export default {
       const q = (this.filters.q || '').toString().toLowerCase().trim();
       if (q) {
         list = list.filter((it) => ((it.name || it.id) || '').toString().toLowerCase().indexOf(q) !== -1);
-      }
-
-      // (min filter removed)
+      }      
 
       // Sorting
       const by = this.sort.by || 'name';
