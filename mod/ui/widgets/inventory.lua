@@ -40,7 +40,6 @@ end
 function output.handle()
     local data = {}
 
-    -- Inventory retrieval: call GetPlayerInventory() directly
     local rawInv = GetPlayerInventory()
 
     data.inventory = rawInv

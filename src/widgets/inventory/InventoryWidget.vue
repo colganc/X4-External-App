@@ -27,8 +27,11 @@
             :key="it.id || it.name"
             class="list-group-item d-flex justify-content-between align-items-start"
           >
-            <div class="me-auto small">{{ it.name || it.id }}</div>
-            <div class="badge bg-secondary rounded-pill small">{{ displayCount(it) }}</div>
+            <div class="me-auto small">
+              <div>{{ it.name || 'Unknown' }}</div>
+              <div v-if="it.price !== undefined && it.price !== null" class="text-muted small">Price: {{ it.price }}</div>
+            </div>
+            <div class="badge bg-secondary rounded-pill small">{{ displayAmount(it) }}</div>
           </div>
           </div>
         </div>
@@ -52,14 +55,14 @@ export default {
       default: 40,
     },
   },
-  data() {
+    data() {
     return {
       filters: {
         q: '',
         minCount: 0,
       },
       sort: {
-        by: 'id',
+          by: 'name',
         dir: 'asc',
       },
     };
@@ -69,9 +72,9 @@ export default {
       this.sort.dir = this.sort.dir === 'asc' ? 'desc' : 'asc';
     }
     ,
-    displayCount(it) {
-      const n = Number(it.count) || 0;
-      return n + 1;
+    displayAmount(it) {
+      const n = Number(it.amount ?? it.count) || 0;
+      return n;
     }
   },
   computed: {
@@ -94,12 +97,39 @@ export default {
 
       // If gameData is an object that contains `.inventory` (our normalized format)
       if (typeof this.gameData === 'object' && !Array.isArray(this.gameData) && this.gameData.inventory) {
-        if (Array.isArray(this.gameData.inventory)) return this.gameData.inventory;
-        if (typeof this.gameData.inventory === 'object') return Object.entries(this.gameData.inventory).map(([k, v]) => ({ id: k, count: v }));
+        const inv = this.gameData.inventory;
+        if (Array.isArray(inv)) {
+          return inv.map((it) => ({
+            id: it.id || it.ware || null,
+            amount: Number(it.amount ?? it.count ?? it.quantity) || 0,
+            name: it.name || null,
+            price: it.price ?? null,
+          }));
+        }
+        if (typeof inv === 'object') {
+          return Object.entries(inv).map(([k, v]) => {
+            if (v && typeof v === 'object') {
+              return {
+                id: k,
+                amount: Number(v.amount ?? v.count ?? v.amount) || 0,
+                name: v.name || null,
+                price: v.price ?? null,
+              };
+            }
+            return { id: k, amount: Number(v) || 0, name: null, price: null };
+          });
+        }
       }
 
       // If gameData itself is an array of items
-      if (Array.isArray(this.gameData)) return this.gameData;
+      if (Array.isArray(this.gameData)) {
+        return this.gameData.map((it) => ({
+          id: it.id || it.ware || null,
+          amount: Number(it.amount ?? it.count ?? it.quantity) || 0,
+          name: it.name || null,
+          price: it.price ?? null,
+        }));
+      }
 
       return [];
     }
@@ -113,20 +143,20 @@ export default {
         list = list.filter((it) => ((it.name || it.id) || '').toString().toLowerCase().indexOf(q) !== -1);
       }
 
-      // Filter by min count (compare using displayed count semantics)
+      // Filter by min amount
       const min = Number(this.filters.minCount) || 0;
       if (min > 0) {
-        list = list.filter((it) => (Number(it.count) || 0) + 1 >= min);
+        list = list.filter((it) => (Number(it.amount ?? it.count) || 0) >= min);
       }
 
       // Sorting
-      const by = this.sort.by || 'id';
+      const by = this.sort.by || 'name';
       const dir = this.sort.dir === 'desc' ? -1 : 1;
 
       list.sort((a, b) => {
-        if (by === 'count') {
-          const na = (Number(a.count) || 0) + 1;
-          const nb = (Number(b.count) || 0) + 1;
+        if (by === 'amount') {
+          const na = Number(a.amount || 0);
+          const nb = Number(b.amount || 0);
           return (na - nb) * dir;
         }
         // default: sort by name (fall back to id)
