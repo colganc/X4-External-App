@@ -24,7 +24,7 @@
             <div class="list-group list-group-flush">
               <div
                 v-for="it in displayedItems"
-                :key="it.id || it.name"
+                :key="it.name"
                 class="list-group-item d-flex justify-content-between align-items-start"
               >
                 <div class="me-auto small">
@@ -94,7 +94,6 @@ export default {
         const inv = this.gameData.inventory;
         if (Array.isArray(inv)) {
           return inv.map((it) => ({
-            id: it.id || it.ware || null,
             amount: Number(it.amount ?? it.quantity) || 0,
             name: it.name || null,
             price: it.price ?? null,
@@ -104,13 +103,12 @@ export default {
           return Object.entries(inv).map(([k, v]) => {
             if (v && typeof v === 'object') {
               return {
-                id: k,
                 amount: Number(v.amount ?? v.quantity) || 0,
                 name: v.name || null,
                 price: v.price ?? null,
               };
             }
-            return { id: k, amount: Number(v) || 0, name: null, price: null };
+            return { amount: Number(v) || 0, name: null, price: null };
           });
         }
       }
@@ -118,7 +116,6 @@ export default {
       // If gameData itself is an array of items
       if (Array.isArray(this.gameData)) {
         return this.gameData.map((it) => ({
-          id: it.id || it.ware || null,
           amount: Number(it.amount ?? it.quantity) || 0,
           name: it.name || null,
           price: it.price ?? null,
@@ -133,8 +130,8 @@ export default {
       // Filter by search text
       const q = (this.filters.q || '').toString().toLowerCase().trim();
       if (q) {
-        list = list.filter((it) => ((it.name || it.id) || '').toString().toLowerCase().indexOf(q) !== -1);
-      }      
+        list = list.filter((it) => ((it.name) || '').toString().toLowerCase().indexOf(q) !== -1);
+      }
 
       // Sorting
       const by = this.sort.by || 'name';
@@ -146,9 +143,9 @@ export default {
           const nb = Number(b.amount || 0);
           return (na - nb) * dir;
         }
-        // default: sort by name (fall back to id)
-        const sa = ((a.name || a.id) || '').toString().toLowerCase();
-        const sb = ((b.name || b.id) || '').toString().toLowerCase();
+        // default: sort by name
+        const sa = ((a.name) || '').toString().toLowerCase();
+        const sb = ((b.name) || '').toString().toLowerCase();
         if (sa < sb) return -1 * dir;
         if (sa > sb) return 1 * dir;
         return 0;
