@@ -210,6 +210,10 @@
           "show_mission_details": "Show mission details"
         }
       }
+      ,
+      "inventory": {
+        "title": "Inventory"
+      }
     }
   }
 }
