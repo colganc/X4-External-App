@@ -2,7 +2,7 @@
   <widget>
     <template #header>
       <div class="d-flex justify-content-between">
-        <h4 class="card-title pb-0 mb-0">Inventory (Raw)</h4>
+        <h4 class="card-title pb-0 mb-0">Inventory</h4>
       </div>
     </template>
 
@@ -12,11 +12,10 @@
       <div v-else>
         <div v-if="items && items.length">
           <div class="d-flex mb-2 gap-2 align-items-center">
-            <input v-model="filters.q" class="form-control form-control-sm" placeholder="Filter item id..." />
-            <input v-model.number="filters.minCount" type="number" class="form-control form-control-sm" style="width:90px" placeholder="Min" />
+            <input v-model="filters.q" class="form-control form-control-sm" placeholder="Filter name..." />
             <select v-model="sort.by" class="form-select form-select-sm" style="width:120px">
-              <option value="id">Sort: id</option>
-              <option value="count">Sort: count</option>
+              <option value="name">Sort: name</option>
+              <option value="amount">Sort: amount</option>
             </select>
             <button class="btn btn-sm btn-outline-secondary" @click="toggleSortDir()">{{ sort.dir === 'asc' ? '↑' : '↓' }}</button>
           </div>
@@ -59,7 +58,6 @@ export default {
     return {
       filters: {
         q: '',
-        minCount: 0,
       },
       sort: {
           by: 'name',
@@ -143,11 +141,7 @@ export default {
         list = list.filter((it) => ((it.name || it.id) || '').toString().toLowerCase().indexOf(q) !== -1);
       }
 
-      // Filter by min amount
-      const min = Number(this.filters.minCount) || 0;
-      if (min > 0) {
-        list = list.filter((it) => (Number(it.amount ?? it.count) || 0) >= min);
-      }
+      // (min filter removed)
 
       // Sorting
       const by = this.sort.by || 'name';
