@@ -2,20 +2,20 @@
   <widget>
     <template #header>
       <div class="d-flex justify-content-between">
-        <h4 class="card-title pb-0 mb-0">Inventory</h4>
+        <h4 class="card-title pb-0 mb-0">{{ $t('app.widgets.inventory.title') }}</h4>
       </div>
     </template>
 
     <div class="p-2">
-      <div v-if="!gameData" class="text-muted small">No inventory data received yet.</div>
+      <div v-if="!gameData" class="text-muted small">{{ $t('app.widgets.inventory.no_data') }}</div>
 
       <div v-else>
         <div v-if="items && items.length">
           <div class="d-flex mb-2 gap-2 align-items-center">
-            <input v-model="filters.q" class="form-control form-control-sm" placeholder="Filter name..." />
+            <input v-model="filters.q" class="form-control form-control-sm" :placeholder="$t('app.widgets.inventory.filter_placeholder')" />
             <select v-model="sort.by" class="form-select form-select-sm" style="width:120px">
-              <option value="name">Sort: name</option>
-              <option value="amount">Sort: amount</option>
+              <option value="name">{{ $t('app.widgets.inventory.sort_name') }}</option>
+              <option value="amount">{{ $t('app.widgets.inventory.sort_amount') }}</option>
             </select>
             <button class="btn btn-sm btn-outline-secondary" @click="toggleSortDir()">{{ sort.dir === 'asc' ? '↑' : '↓' }}</button>
           </div>
@@ -28,8 +28,8 @@
                 class="list-group-item d-flex justify-content-between align-items-start"
               >
                 <div class="me-auto small">
-                  <div>{{ it.name || 'Unknown' }}</div>
-                  <div v-if="it.price !== undefined && it.price !== null" class="text-muted small">Price: {{ it.price }}</div>
+                  <div>{{ it.name || $t('app.widgets.inventory.unknown') }}</div>
+                  <div v-if="it.price !== undefined && it.price !== null" class="text-muted small">{{ $t('app.widgets.inventory.price_label') }} {{ it.price }}</div>
                 </div>
                 <div class="badge bg-secondary rounded-pill small">{{ displayAmount(it) }}</div>
               </div>
